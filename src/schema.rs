@@ -28,16 +28,16 @@ impl Schema {
         for (field_name, t, _) in self.fields.iter() {
             re_str.push_str(format!("{}: ", field_name).as_str());
             let type_re = match t {
-                Type::Varchar => r"/'\w*/'",
-                Type::Integer => r"\d*",
-                Type::Float => r"\d*\.\d*"
+                Type::Varchar => r"'(\w*)'",
+                Type::Integer => r"(\d*)",
+                Type::Float => r"(\d*\.\d*)"
             };
             re_str.push_str(format!("{}, ", type_re).as_str());
         }
 
         re_str.pop(); // remove the last ", " 
         re_str.pop();
-        re_str.push_str(format!(" into {};", self.table_name).as_str());
+        re_str.push_str(format!(" into {}", self.table_name).as_str());
         Regex::new(&re_str)
     }
 
