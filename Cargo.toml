@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 dialoguer = "0.6.2"
 regex = "1" 
+byteorder = "1.3.4"
