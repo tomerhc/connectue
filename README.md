@@ -1,4 +1,4 @@
-# connectue
+# connectume
 A small, local database written in rust
 ## feature will include:
 1. sql like syntax and relational schemas
