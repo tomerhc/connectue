@@ -29,6 +29,11 @@ impl Page {
         }
     }
 
+    pub fn read_rows(&self) -> Vec<Vec<u8>>{
+        self.buffer.clone()
+    }
+
+
     pub fn is_full(&self) -> bool{
         self.row_count >= self.rows_per_page
     }
@@ -71,6 +76,19 @@ impl Table {
         let serial_row = self.serialize_row(row)?;
         let writable_page = self.pages.last_mut().unwrap();
         writable_page.write_row(serial_row)
+    }
+
+
+    pub fn read_all(&self) -> Vec<Vec<String>> {
+        let mut res: Vec<Vec<String>> = Vec::new();
+        for page in self.pages.iter() {
+            let rows = page.read_rows();
+            for row in rows.into_iter(){
+                let deserilized = self.deserialize_row(row);
+                res.push(deserilized);
+            }
+        }
+        res // revesed!!!! 
     }
 
     fn new_page(&mut self) -> Result<(),TableError> {
@@ -123,5 +141,28 @@ impl Table {
             return Err(TableError::SerializeErr);
         }
     }
+
+    fn deserialize_row(&self, mut row: Vec<u8>) -> Vec<String> {
+        let mut res: Vec<String> = Vec::with_capacity(self.schema.fields.len());
+        for (_, t, offset) in self.schema.offsets.iter().rev() {
+            let buff = row.split_off(*offset as usize);
+            match t {
+                Type::Varchar => {
+                    res.push(String::from_utf8_lossy(&buff[..]).to_mut().replace("\u{0}",""));        
+                },
+                Type::Integer => {
+                    let int = Cursor::new(&buff[..]).read_i32::<BigEndian>().unwrap();
+                    res.push(format!("{}",int));
+                },
+                Type::Float => {
+                    let float = Cursor::new(&buff[..]).read_f32::<BigEndian>().unwrap();
+                    res.push(format!("{}",float));
+                }
+           }
+       }
+       res    
+    }
+
+
 }
 

@@ -48,5 +48,6 @@ fn main_loop(table: &mut Table) {
             }
     
             println!("{}", output);
+            println!("{:?}", table.read_all());
     } 
 }

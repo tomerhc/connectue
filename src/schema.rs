@@ -1,5 +1,6 @@
 use regex::{Regex, Error};
 
+#[derive(Copy, Clone)]
 pub enum Type {
     Varchar,
     Integer,
@@ -9,7 +10,7 @@ pub enum Type {
 pub struct Schema {
     pub table_name: String,
     pub fields: Vec<(String, Type, i32)>,  // (field name, type, length)
-    pub offsets: Vec<(String, i32)>, // (field name, offset from start of row)
+    pub offsets: Vec<(String, Type, i32)>, // (field name, offset from start of row)
     pub row_length: i32
 }
 
@@ -43,11 +44,11 @@ impl Schema {
 
 }
 
-fn calc_offsets(fields: &Vec<(String, Type, i32)>) -> Vec<(String, i32)> {
-    let mut offsets: Vec<(String, i32)> = Vec::new();
+fn calc_offsets(fields: &Vec<(String, Type, i32)>) -> Vec<(String, Type, i32)> {
+    let mut offsets: Vec<(String, Type, i32)> = Vec::new();
     let mut counter: i32 = 0;
-     for (field_name, _, len) in fields.iter() {
-        offsets.push((field_name.clone(), counter));
+     for (field_name, t , len) in fields.iter() {
+        offsets.push((field_name.clone(), t.clone(), counter));
         counter += *len;
     }
     offsets
