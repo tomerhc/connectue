@@ -3,6 +3,7 @@ mod query_parser;
 mod meta_parser;
 mod schema;
 mod table;
+mod Pager;
 use table::Table;
 use schema::{Type, Schema};
 
@@ -50,4 +51,61 @@ fn main_loop(table: &mut Table) {
             println!("{}", output);
             println!("{:?}", table.read_all());
     } 
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn insertion_test(){
+        let table_name = String::from("tomer");
+        let fields = vec![
+            (String::from("id"), Type::Integer, 4),
+            (String::from("username"), Type::Varchar, 40),
+            (String::from("grade"), Type::Float, 4),
+        ];
+
+        let schema = Schema::new(table_name, fields);
+        let mut table = Table::new(schema, 10, 4096);
+
+       let input = String::from("insert id: 1 username: 'tomerh' grade: 1.2 into tomer");
+        assert_eq!(command_handler(input, &mut table), "inserted row"); 
+
+    }
+
+    #[test]
+    fn fill_table_test(){
+        let table_name = String::from("tomer");
+        let fields = vec![
+            (String::from("id"), Type::Integer, 4),
+            (String::from("username"), Type::Varchar, 40),
+            (String::from("grade"), Type::Float, 4),
+        ];
+
+        let schema = Schema::new(table_name, fields);
+        let mut table = Table::new(schema, 5, 100);
+        for i in 0..20 {
+            let input = format!("insert id: {} username: 'tomerh{}' grade: {}.2 into tomer", i,i,i);
+            command_handler(input,&mut table);
+        }
+        let input = String::from("insert id: 1 username: 'tomerh' grade: 1.2 into tomer");
+        assert_eq!(command_handler(input, &mut table), "invlid query \n faild insertion due to TableFull"); 
+    }
+    
+    #[test]
+    fn string_too_long(){
+        let table_name = String::from("tomer");
+        let fields = vec![
+            (String::from("id"), Type::Integer, 4),
+            (String::from("username"), Type::Varchar, 40),
+            (String::from("grade"), Type::Float, 4),
+        ];
+
+        let schema = Schema::new(table_name, fields);
+        let mut table = Table::new(schema, 10, 4096);
+
+       let input = String::from("insert id: 1 username: 't claknsclkasnlksnclkasnclkasnlcksnlskanc   cnananana  omerh' grade: 1.2 into tomer");
+        assert_eq!(command_handler(input, &mut table), "invlid query \n faild insertion due to SerializeErr"); 
+    }
 }
