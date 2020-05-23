@@ -1,66 +1,41 @@
 use crate::schema::{Schema, Type};
+use crate::Pager::*;
 use std::io::Cursor;
 use byteorder::{BigEndian,WriteBytesExt, ReadBytesExt}; // 1.3.4
 
 
 #[derive(Debug)]
 pub enum TableError {
-    PageFull,
     TableFull,
-    SerializeErr
-}
-
-
-#[derive(Debug)]
-pub struct Page {
-    rows_per_page: i32,
-    row_count: i32, 
-    buffer: Vec<Vec<u8>>
-}
-
-impl Page {
-    pub fn write_row(&mut self, row: Vec<u8>) -> Result<String, TableError> {
-        if self.is_full(){
-            return Err(TableError::PageFull);
-        } else {
-            self.buffer.push(row);
-            self.row_count += 1;
-            return Ok(String::from("inserted row"));
-        }
-    }
-
-    pub fn read_rows(&self) -> Vec<Vec<u8>>{
-        self.buffer.clone()
-    }
-
-
-    pub fn is_full(&self) -> bool{
-        self.row_count >= self.rows_per_page
-    }
+    SerializeErr, 
+    WriteError
 }
 
 
 pub struct Table { 
     pub schema: Schema,
-    max_pages: i32,
-    page_size: i32,
-    rows_per_page: i32,
-    max_rows: i32,
+    pager: Pager,
+    max_pages: u32,
+    page_size: u32,
+    pub rows_per_page: u32,
+    pub max_rows: u32,
     pub pages: Vec<Page>
 }
 
 impl Table {
-    pub fn new(s:Schema, max_pages: i32, page_size: i32) -> Self {
+    pub fn new(s:Schema, max_pages: u32, page_size: u32, path: String) -> Self {
         let rows_per_page = page_size / s.row_length;
         let max_rows = max_pages * rows_per_page;
         let init_page = Page{
-            rows_per_page: rows_per_page,
+            row_length: s.row_length,
+            max_rows: rows_per_page,
             row_count: 0,
             buffer: vec![]
         };
 
         Self {
             schema: s,
+            pager: Pager::new(path, page_size).unwrap(),
             max_pages: max_pages,
             page_size: page_size,
             rows_per_page: rows_per_page,
@@ -70,20 +45,26 @@ impl Table {
     }
 
     pub fn write_row(&mut self, row: Vec<String>) -> Result<String,TableError>{
-        if self.pages.last().unwrap().is_full() {
-            self.new_page()?;
+        if self.pages.is_empty() || self.pages.last().unwrap().is_full(){
+            self.pages.push(self.pager.new_page(self.schema.row_length, self.rows_per_page));
         }
         let serial_row = self.serialize_row(row)?;
         let writable_page = self.pages.last_mut().unwrap();
-        writable_page.write_row(serial_row)
+        match writable_page.write_row(serial_row) {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                println!("{:?}", e);
+                return Err(TableError::WriteError)
+            }
+        }
     }
 
 
     pub fn read_all(&self) -> Vec<Vec<String>> {
         let mut res: Vec<Vec<String>> = Vec::new();
         for page in self.pages.iter() {
-            let rows = page.read_rows();
-            for row in rows.into_iter(){
+            let rows = page.read_all();
+            for row in rows.into_iter(){ 
                 let deserilized = self.deserialize_row(row);
                 res.push(deserilized);
             }
@@ -91,19 +72,6 @@ impl Table {
         res // revesed!!!! 
     }
 
-    fn new_page(&mut self) -> Result<(),TableError> {
-       if self.pages.len() >= self.max_pages as usize {
-            return Err(TableError::TableFull);
-       } else {
-           let page = Page {
-               rows_per_page: self.rows_per_page,
-               row_count: 0,
-               buffer: vec![]
-           };
-           self.pages.push(page);
-       }
-       Ok(())
-    }
 
     fn serialize_row(&self, row: Vec<String>) -> Result<Vec<u8>, TableError> {
         let mut buffer: Vec<u8> = Vec::with_capacity(self.schema.row_length as usize);

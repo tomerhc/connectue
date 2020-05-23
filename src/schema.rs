@@ -9,13 +9,13 @@ pub enum Type {
 
 pub struct Schema {
     pub table_name: String,
-    pub fields: Vec<(String, Type, i32)>,  // (field name, type, length)
-    pub offsets: Vec<(String, Type, i32)>, // (field name, offset from start of row)
-    pub row_length: i32
+    pub fields: Vec<(String, Type, u32)>,  // (field name, type, length)
+    pub offsets: Vec<(String, Type, u32)>, // (field name, offset from start of row)
+    pub row_length: u32
 }
 
 impl Schema {
-    pub fn new(table_name: String, fields: Vec<(String, Type, i32)>) -> Self {
+    pub fn new(table_name: String, fields: Vec<(String, Type, u32)>) -> Self {
         Self {
             table_name: table_name,
             row_length: calc_row_length(&fields),
@@ -44,9 +44,9 @@ impl Schema {
 
 }
 
-fn calc_offsets(fields: &Vec<(String, Type, i32)>) -> Vec<(String, Type, i32)> {
-    let mut offsets: Vec<(String, Type, i32)> = Vec::new();
-    let mut counter: i32 = 0;
+fn calc_offsets(fields: &Vec<(String, Type, u32)>) -> Vec<(String, Type, u32)> {
+    let mut offsets: Vec<(String, Type, u32)> = Vec::new();
+    let mut counter: u32 = 0;
      for (field_name, t , len) in fields.iter() {
         offsets.push((field_name.clone(), t.clone(), counter));
         counter += *len;
@@ -54,9 +54,9 @@ fn calc_offsets(fields: &Vec<(String, Type, i32)>) -> Vec<(String, Type, i32)> {
     offsets
 }
 
-fn calc_row_length(fields: &Vec<(String, Type, i32)>) -> i32 {
-    let lengths: Vec<i32> = fields.iter().map(|a| a.2).collect();
-    lengths.iter().sum::<i32>()
+fn calc_row_length(fields: &Vec<(String, Type, u32)>) -> u32 {
+    let lengths: Vec<u32> = fields.iter().map(|a| a.2).collect();
+    lengths.iter().sum::<u32>()
 }
 
 
